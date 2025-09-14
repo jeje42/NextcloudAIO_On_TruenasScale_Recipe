@@ -4,14 +4,21 @@ This guide summarizes the necessary steps to deploy Nextcloud AIO on Truenas Sca
 
 ## Motivations
 
-  - Run Nextcloud AIO directly on top of docker on Truenas Scale. No VM overhead.  It makes it easier to use harware acceleration if a GPU is present.
+  - Run Nextcloud AIO directly on top of docker on Truenas Scale. No VM overhead. It makes it easier to use harware acceleration if a GPU is present.
   - Benefits from ZFS Data Protection with the possibility to take snaphots and replicate the configurations, volumes and data. This can complete tbe Nextcloud AIO existing backup solution and make migration to a new machine easier when necessary.
 
 ## Requirements
 
   - You need Truenas Scale with version ElectricEel-24.10 or newer. Since this version, Scale ships with a working docker environnment instead of Kubernetes. It is also possible to deploy an application using Docker Compose, which is the chosen method described in this guide.
   - Please create a docker user if it does not exist. **UID MUST be 1001.**
-  - This guide assumes you already have a valid SSL certificates to provide to the reverse proxy. I did not try this setup with acme challenge, but contributions are welcomed :).
+  - This guide assumes you already have a valid SSL certificates to provide to the reverse proxy. I did not try this setup with acme challenge, but feedback and contributions are welcomed :).
+
+## Challenges encountered with Truenas Scale
+
+Truenas Scale comes with some specific behaviors compared to a default Debian system. In particular the following needs to be addressed to run Nextcloud AIO properly:
+
+  - docker volume location: by default, Truenas Scale stores the volume data in it's internal volume directory at `/var/lib/docker/volumes`, making it challenging to backup and restore docker volumes. This setup creates bind mount inside the application folder, see the `volumes` section of the `compose.yml`.
+  - Truenas Scale renames the networks by default, which causes trouble since Nextcloud AIO expect the network `nextcloud-aio` to attach the containers to it. The `networks` section in `compose.yml` solves this problem.
 
 ## How to deploy
 
