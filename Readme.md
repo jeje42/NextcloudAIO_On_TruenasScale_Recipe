@@ -24,10 +24,10 @@ This guide summarizes the necessary steps to deploy Nextcloud AIO on Truenas Sca
   include
     - /mnt/...yourPathTo/compose.yml
   ```
-  Of course set the correct path that leads to your compose.yml
+  Of course set the correct path that leads to your `compose.yml`.
 
   6. Click on save and wait for Truenas to download and start the aio container. This might take a few minutes based on your network connection and server speed.
-  7. When the app shows started status from Apps UI, your nextcloud AIO interface should be available at http://yourTruenasIp:8080 (assuming you did not change the port in compose.yml)
+  7. When the app shows started status from Apps UI, your nextcloud AIO interface should be available at http://yourTruenasIp:8080 (assuming you did not change the port in `compose.yml`)
   8. Your can now follow the normal steps to setup AIO
   9. Do not forget to forward port 443 to the machine/VM your system is running on, port 8443. 
 
