@@ -1,0 +1,144 @@
+networks:
+  nextcloud-aio:
+    name: nextcloud-aio # Name is important here because truenas might change the name otherise and the containers created by AIO will not use it.
+    driver: bridge
+
+# We set the path of the volumes, otherwise truenas will create them inside `/mnt/.ix-apps/docker/volumes` by default.
+volumes:
+  nextcloud_aio_mastercontainer:
+    name: nextcloud_aio_mastercontainer # This line is not allowed to be changed as otherwise the built-in backup solution will not work
+    driver: local
+    driver_opts:
+      type: auto
+      o: bind
+      device: ./volumes/nextcloud_aio_mastercontainer
+  nextcloud_aio_apache:
+    name: nextcloud_aio_apache
+    driver: local
+    driver_opts:
+      type: auto
+      o: bind
+      device: ./volumes/nextcloud_aio_apache
+  nextcloud_aio_calcardbackup:
+    name: nextcloud_aio_calcardbackup
+    driver: local
+    driver_opts:
+      type: auto
+      o: bind
+      device: ./volumes/nextcloud_aio_calcardbackup
+  nextcloud_aio_clamav:
+    name: nextcloud_aio_clamav
+    driver: local
+    driver_opts:
+      type: auto
+      o: bind
+      device: ./volumes/nextcloud_aio_clamav
+  nextcloud_aio_database:
+    name: nextcloud_aio_database
+    driver: local
+    driver_opts:
+      type: auto
+      o: bind
+      device: ./volumes/nextcloud_aio_database
+  nextcloud_aio_database_dump:
+    name: nextcloud_aio_database_dump
+    driver: local
+    driver_opts:
+      type: auto
+      o: bind
+      device: ./volumes/nextcloud_aio_database_dump
+  nextcloud_aio_elasticsearch:
+    name: nextcloud_aio_elasticsearch
+    driver: local
+    driver_opts:
+      type: auto
+      o: bind
+      device: ./volumes/nextcloud_aio_elasticsearch
+  nextcloud_aio_nextcloud:
+    name: nextcloud_aio_nextcloud
+    driver: local
+    driver_opts:
+      type: auto
+      o: bind
+      device: ./volumes/nextcloud_aio_nextcloud
+  nextcloud_aio_redis:
+    name: nextcloud_aio_redis
+    driver: local
+    driver_opts:
+      type: auto
+      o: bind
+      device: ./volumes/nextcloud_aio_redis
+  nextcloud_aio_talk_recording:
+    name: nextcloud_aio_talk_recording
+    driver: local
+    driver_opts:
+      type: auto
+      o: bind
+      device: ./volumes/nextcloud_aio_talk_recording
+  nextcloud_aio_onlyoffice:
+    name: nextcloud_aio_onlyoffice
+    driver: local
+    driver_opts:
+      type: auto
+      o: bind
+      device: ./volumes/nextcloud_aio_onlyoffice
+
+
+services:
+  nextcloud-aio-mastercontainer:
+    image: ghcr.io/nextcloud-releases/all-in-one:latest
+    init: true
+    container_name: nextcloud-aio-mastercontainer # This line is not allowed to be changed as otherwise AIO will not work correctly
+    volumes:
+      - nextcloud_aio_mastercontainer:/mnt/docker-aio-config # This line is not allowed to be changed as otherwise the built-in backup solution will not work
+      - nextcloud_aio_apache:/naap
+      - nextcloud_aio_calcardbackup:/naccard
+      - nextcloud_aio_clamav:/nacav
+      - nextcloud_aio_database:/nadb
+      - nextcloud_aio_database_dump:/nadbd
+      - nextcloud_aio_elasticsearch:/naes
+      - nextcloud_aio_nextcloud:/nanc
+      - nextcloud_aio_redis:/nard
+      - nextcloud_aio_talk_recording:/natr
+      - nextcloud_aio_onlyoffice:/naoo
+      - /var/run/docker.sock:/var/run/docker.sock:ro # May be changed on macOS, Windows or docker rootless. See the applicable documentation. If adjusting, don't forget to also set 'WATCHTOWER_DOCKER_SOCKET_PATH'!
+    network_mode: bridge
+    ports:
+      - 8080:8080 # You might need to change the mapped port it is already used on your Truenas installation, for example `9090:8080`
+    environment: # You can check the possible variables at https://github.com/nextcloud/all-in-one/blob/main/compose.yaml
+      # AIO_DISABLE_BACKUP_SECTION: false # Setting this to true allows to hide the backup section in the AIO interface. See https://github.com/nextcloud/all-in-one#how-to-disable-the-backup-section
+      APACHE_PORT: 11000 # Is needed when running behind a web server or reverse proxy (like Apache, Nginx, Caddy, Cloudflare Tunnel and else). See https://github.com/nextcloud/all-in-one/blob/main/reverse-proxy.md
+      APACHE_IP_BINDING: 127.0.0.1 # Should be set when running behind a web server or reverse proxy (like Apache, Nginx, Caddy, Cloudflare Tunnel and else) that is running on the same host. See https://github.com/nextcloud/all-in-one/blob/main/reverse-proxy.md
+      #APACHE_ADDITIONAL_NETWORK: proxy-nc # (Optional) Connect the apache container to an additional docker network. Needed when behind a web server or reverse proxy (like Apache, Nginx, Caddy, Cloudflare Tunnel and else) running in a different docker network on same server. See https://github.com/nextcloud/all-in-one/blob/main/reverse-proxy.md
+      SKIP_DOMAIN_VALIDATION: true
+      NEXTCLOUD_DATADIR: /your/data/folder # TODO: replace with DataDataset path from the recipe. Allows to set the host directory for Nextcloud's datadir. ⚠⚠⚠ Warning: do not set or adjust this value after the initial Nextcloud installation is done! See https://github.com/nextcloud/all-in-one#how-to-change-the-default-location-of-nextclouds-datadir
+      # NEXTCLOUD_ENABLE_DRI_DEVICE: true # This allows to enable the /dev/dri device for containers that profit from it. ⚠⚠⚠ Warning: this only works if the '/dev/dri' device is present on the host! If it should not exist on your host, don't set this to true as otherwise the Nextcloud container will fail to start! See https://github.com/nextcloud/all-in-one#how-to-enable-hardware-acceleration-for-nextcloud
+  caddy:
+    image: caddy:2.10.0-alpine #Please adjust the version if a newer exist.
+    container_name: caddy
+    volumes:
+      - CertsPath:/certs:ro # TODO: you NEED to set the right path for the ssl certificates instead of "CertsPath"
+      - ./caddy/config:/config
+      - ./caddy/data:/data
+      - ./caddy/sites:/srv
+    networks:
+      - nextcloud-aio
+    ports:
+      - 8443:8443
+    configs:
+      - source: Caddyfile
+        target: /etc/caddy/Caddyfile
+
+
+# TODO: replace "your.domain.name" accordingly. You must set the same value from the nexlcoud AIO interface during the initial setup
+configs:
+  Caddyfile:
+    content: |
+      https://your.domain.name:8443 {
+        tls /certs/fullchain.pem  /certs/privkey.pem
+        header Strict-Transport-Security max-age=31536000;
+        reverse_proxy nextcloud-aio-apache:11000
+      }
+
+
+
